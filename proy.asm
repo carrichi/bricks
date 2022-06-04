@@ -347,6 +347,9 @@ conversion_mouse:
 	;se va a revisar si fue dentro del boton [X]
 	cmp dx,0
 	je boton_x
+	;se va a revisar si el click fue en el renglon 19 (reglon de los botones STOP, PAUSE y START)
+	cmp dx, 19
+	je mas_botones
 
 	jmp mouse_no_clic
 boton_x:
@@ -366,8 +369,42 @@ boton_x3:
 	;Se cumplieron todas las condiciones
 	jmp salir
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Lógica para el resto de botones;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 mas_botones:
+	; Si llego aqui es porque se presiono en el renglon 19.
+	; STOP se encuentra entre las columas stop_izq y stop_der
+	cmp cx, play_izq
+	jge boton_play
+	cmp cx, pause_izq
+	jge boton_pause
+	cmp cx, stop_izq
+	jge boton_stop
 	jmp mouse_no_clic
+boton_stop:
+	cmp cx, stop_der
+	jbe boton_stop1
+	jmp mouse_no_clic
+boton_stop1:
+	;cumplio con todas las condiciones
+	jmp salir
+boton_pause:
+	cmp cx, pause_der
+	jbe boton_pause1
+	jmp mouse_no_clic
+boton_pause1:
+	;cumplio con todas las condiciones
+	jmp salir
+boton_play:
+	cmp cx, play_der
+	jbe boton_play1
+	jmp mouse_no_clic
+boton_play1:
+	;cumplio con todas las condiciones
+	jmp salir
+
 
 ;Si no se encontró el driver del mouse, muestra un mensaje y el usuario debe salir tecleando [enter]
 teclado:
