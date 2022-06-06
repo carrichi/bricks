@@ -346,15 +346,17 @@ conversion_mouse:
 	;Si el mouse fue presionado en el renglon 0
 	;se va a revisar si fue dentro del boton [X]
 	cmp dx,0
-	je boton_x
-	;se va a revisar si el click fue en el renglon 19 (reglon de los botones STOP, PAUSE y START)
-	cmp dx, 19
-	jge mas_botones ;Si el click fue en un reglon mayor o igual a 19.
+	je boton_x ;Da el salto si el click fue en el renglon 0.
 
-	jmp mouse_no_clic
+	;Se revisa si el click fue en el renglon 19 (reglon de los botones STOP, PAUSE y START)
+	cmp dx, 19
+	jge mas_botones ;Da el salto si el click fue en un reglon mayor o igual a 19.
+
+	jmp mouse_no_clic ;Si no se dieron saltos, se determinara que no se dio ningun click.
+
+; SE DIO CLICK EN EL RENGLON 0
 boton_x:
 	jmp boton_x1
-
 ;Lógica para revisar si el mouse fue presionado en [X]
 ;[X] se encuentra en renglon 0 y entre columnas 76 y 78
 boton_x1:
@@ -374,63 +376,69 @@ boton_x3:
 ;Lógica para el resto de botones;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 mas_botones:
-	; Si llego aqui es porque se presiono en el renglon 19.
-	; STOP se encuentra entre las columas stop_izq y stop_der
-	cmp cx, play_izq
-	jge boton_play
-	cmp cx, pause_izq
-	jge boton_pause
-	cmp cx, stop_izq
-	jge boton_stop
+	; Si llego aqui es porque se presiono en el renglon 19 o mayor.
+	; Ahora se verifica si el cursor estaba en el 21 o menor.
+	cmp dx, 21
+	jbe mas_botones1 ;Da el salto si el click fue en un reglon menor o igual a 21.
 	jmp mouse_no_clic
+
+mas_botones1:
+	; Si llego aqui es porque esta ente el renglon 19 y 21.
+	; Se verifica si el cursor estaba dentro de algun boton,
+	; se comienza por el boton PLAY.
+	jmp boton_play
+
+;;;;;;;;;;;;;
+; BOTON PLAY
+;;;;;;;;;;;;;
 boton_play:
-	cmp cx, play_der
-	jbe boton_play1
-	jmp mouse_no_clic
+	; Si la posicion del cursor es mayor o igual a play_izq salta a la siguiente condicion.
+	cmp cx, play_izq
+	jge boton_play1
+	; Si no se dio el salto, se verifica si esta en el el boton PAUSE.
+	jmp boton_pause
 boton_play1:
-	;Ya esta entre los dos rangos horizontales.
-	cmp cx, play_sup
-	jge boton_play2
+	cmp cx, play_der
+	jbe boton_play2
+	; Si no se dio el salto, el cursor NO esta dentro de PLAY.
 	jmp mouse_no_clic
 boton_play2:
-	cmp cx, play_inf
-	jbe boton_play3
-	jmp mouse_no_clic
-boton_play3:
-	;Ya se encuentra dentro de cualquier parte del boton.
+	;Ya se encuentra dentro de cualquier parte del boton PLAY.
 	;Se implementa el procedimiento de inicio del juego.
 	jmp salir
+
+;;;;;;;;;;;;;;;
+; BOTON PAUSE
+;;;;;;;;;;;;;;;
 boton_pause:
-	cmp cx, pause_der
-	jbe boton_pause1
-	jmp mouse_no_clic
+	cmp cx, pause_izq
+	jge boton_pause1
+	; Si no se dio el salto, se vefitica si esta en el boton STOP.
+	jmp boton_stop
 boton_pause1:
-	;Ya esta entre los dos rangos horizontales.
-	cmp cx, pause_sup
-	jge boton_pause2
+	cmp cx, pause_der
+	jbe boton_pause2
+	; Si no se dio el salto, el cursor NO esta dentro de PAUSE.
 	jmp mouse_no_clic
 boton_pause2:
-	cmp cx, pause_inf
-	jbe boton_pause3
-	jmp mouse_no_clic
-boton_pause3:
 	;Ya se encuentra dentro de cualquier parte del boton.
 	;Se implementa el procedimiento de inicio del juego.
 	jmp salir
+
+;;;;;;;;;;;;;;;
+; BOTON STOP
+;;;;;;;;;;;;;;;
 boton_stop:
-	cmp cx, stop_der
-	jbe boton_stop1
+	cmp cx, stop_izq
+	jge boton_stop1
+	; Si no se dio el salto, el cursor no esta sobre ningun boton.
 	jmp mouse_no_clic
 boton_stop1:
-	;Ya esta entre los dos rangos horizontales.
-	cmp cx, stop_sup
-	jge boton_stop2
+	cmp cx, stop_der
+	jbe boton_stop2
+	; Si no se dio el salto, el cursor no esta sobre ningun boton.
 	jmp mouse_no_clic
 boton_stop2:
-	cmp cx, stop_inf
-	jbe boton_stop3
-	jmp mouse_no_clic
-boton_stop3:
 	;Ya se encuentra dentro de cualquier parte del boton.
 	;Se implementa el procedimiento de inicio del juego.
 	jmp salir
