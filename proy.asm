@@ -76,26 +76,26 @@ score_col 		equ 	lim_derecho+7
 ;Botón STOP
 stop_col 		equ 	lim_derecho+15
 stop_ren 		equ 	19
-stop_izq 		equ 	stop_col-1
-stop_der 		equ 	stop_col+1
-stop_sup 		equ 	stop_ren-1
-stop_inf 		equ 	stop_ren+1
+stop_izq 		equ 	stop_col
+stop_der 		equ 	stop_col+2
+stop_sup 		equ 	stop_ren
+stop_inf 		equ 	stop_ren+2
 
 ;Botón PAUSE
 pause_col 		equ 	lim_derecho+25
 pause_ren 		equ 	19
-pause_izq 		equ 	pause_col-1
-pause_der 		equ 	pause_col+1
-pause_sup 		equ 	pause_ren-1
-pause_inf 		equ 	pause_ren+1
+pause_izq 		equ 	pause_col
+pause_der 		equ 	pause_col+2
+pause_sup 		equ 	pause_ren
+pause_inf 		equ 	pause_ren+2
 
 ;Botón PLAY
 play_col 		equ 	lim_derecho+35
 play_ren 		equ 	19
-play_izq 		equ 	play_col-1
-play_der 		equ 	play_col+1
-play_sup 		equ 	play_ren-1
-play_inf 		equ 	play_ren+1
+play_izq 		equ 	play_col
+play_der 		equ 	play_col+2
+play_sup 		equ 	play_ren
+play_inf 		equ 	play_col+2
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -349,7 +349,7 @@ conversion_mouse:
 	je boton_x
 	;se va a revisar si el click fue en el renglon 19 (reglon de los botones STOP, PAUSE y START)
 	cmp dx, 19
-	je mas_botones
+	jge mas_botones ;Si el click fue en un reglon mayor o igual a 19.
 
 	jmp mouse_no_clic
 boton_x:
@@ -383,28 +383,57 @@ mas_botones:
 	cmp cx, stop_izq
 	jge boton_stop
 	jmp mouse_no_clic
-boton_stop:
-	cmp cx, stop_der
-	jbe boton_stop1
+boton_play:
+	cmp cx, play_der
+	jbe boton_play1
 	jmp mouse_no_clic
-boton_stop1:
-	;cumplio con todas las condiciones
+boton_play1:
+	;Ya esta entre los dos rangos horizontales.
+	cmp cx, play_sup
+	jge boton_play2
+	jmp mouse_no_clic
+boton_play2:
+	cmp cx, play_inf
+	jbe boton_play3
+	jmp mouse_no_clic
+boton_play3:
+	;Ya se encuentra dentro de cualquier parte del boton.
+	;Se implementa el procedimiento de inicio del juego.
 	jmp salir
 boton_pause:
 	cmp cx, pause_der
 	jbe boton_pause1
 	jmp mouse_no_clic
 boton_pause1:
-	;cumplio con todas las condiciones
-	jmp salir
-boton_play:
-	cmp cx, play_der
-	jbe boton_play1
+	;Ya esta entre los dos rangos horizontales.
+	cmp cx, pause_sup
+	jge boton_pause2
 	jmp mouse_no_clic
-boton_play1:
-	;cumplio con todas las condiciones
+boton_pause2:
+	cmp cx, pause_inf
+	jbe boton_pause3
+	jmp mouse_no_clic
+boton_pause3:
+	;Ya se encuentra dentro de cualquier parte del boton.
+	;Se implementa el procedimiento de inicio del juego.
 	jmp salir
-
+boton_stop:
+	cmp cx, stop_der
+	jbe boton_stop1
+	jmp mouse_no_clic
+boton_stop1:
+	;Ya esta entre los dos rangos horizontales.
+	cmp cx, stop_sup
+	jge boton_stop2
+	jmp mouse_no_clic
+boton_stop2:
+	cmp cx, stop_inf
+	jbe boton_stop3
+	jmp mouse_no_clic
+boton_stop3:
+	;Ya se encuentra dentro de cualquier parte del boton.
+	;Se implementa el procedimiento de inicio del juego.
+	jmp salir
 
 ;Si no se encontró el driver del mouse, muestra un mensaje y el usuario debe salir tecleando [enter]
 teclado:
