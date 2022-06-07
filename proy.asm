@@ -62,7 +62,7 @@ lim_derecho 	equ		30
 ini_columna 	equ 	lim_derecho/2
 ini_renglon 	equ 	22
 ; Valor de referencia para la primer direccion de la bola
-first_direction equ		2
+first_direction equ		3
 
 ;Valores para la posición de los controles e indicadores dentro del juego
 ;Lives
@@ -144,7 +144,7 @@ bola_col		db 		ini_columna 	 	;columna de la bola
 bola_ren		db 		ini_renglon-1 		;renglón de la bola
 bola_pend 		db 		1 		;pendiente de desplazamiento de la bola
 bola_rap 		dw 		2 		;rapidez de la bola
-bola_dir		db 		1 		;dirección de la bola. 0 izquierda-abajo, 1 derecha-abajo, 2 izquierda-arriba, 3 derecha-arriba
+bola_dir		db 		first_direction;1 		;dirección de la bola. 0 izquierda-abajo, 1 derecha-abajo, 2 izquierda-arriba, 3 derecha-arriba
 bola_status		db		1	; 0 N0 puede moverse, 1 SI puede moverse.
 
 ;Variables que sirven de parámetros de entrada para el procedimiento IMPRIME_BOTON
@@ -361,6 +361,7 @@ imprime_ui:
 	apaga_cursor_parpadeo 	;Deshabilita parpadeo del cursor
 	call DIBUJA_UI 			;procedimiento que dibuja marco de la interfaz
 	muestra_cursor_mouse 	;hace visible el cursor del mouse
+	;mov [bola_dir], first_direction ;La primer direccion que tomara sera 3 derecha-arriba
 
 ;En "mouse_no_clic" se revisa que el boton izquierdo del mouse no esté presionado
 ;Si el botón está suelto, continúa a la sección "mouse"
@@ -478,7 +479,6 @@ boton_play2:
 	cambiar_color_boton 254d, bgAmarillo, stop_ren, stop_col
 
 	; COMIENZA A MOVERSE LA BOLITA
-	mov [bola_dir], first_direction ;La primer direccion que tomara sera 3 derecha-arriba
 	jmp can_play
 
 teclado_no_click:
@@ -587,11 +587,12 @@ boton_stop2:
 	clear_buffer
 	; Se cambia el color del boton de PLAY para indicar que se desactivo.
 	cambiar_color_boton 16d, bgAmarillo, play_ren, play_col
-	; Se cambia el color del boton PAUSE para indicar que se activo.
+	; Se cambia el color del boton PAUSE para indicar que se no esta activo.
 	cambiar_color_boton 19d, bgAmarillo, pause_ren, pause_col
 	; Se cambia el color del boton STOP para indicar que se activo.
 	cambiar_color_boton 254d, bgCyanClaro, stop_ren, stop_col
-	;Se reacomoda al jugador en su posicion inicial.
+	;Coloca los ladrillos en su posicion inicial.
+	call IMPRIME_BRICKS
 	;Se reacomoda al jugador en su posicion inicial.
 	call BORRA_JUGADOR
 	mov al, ini_columna
@@ -607,8 +608,8 @@ boton_stop2:
 	mov [bola_col], al
 	mov [bola_ren], ah
 	call IMPRIME_BOLA
-	;Coloca los ladrillos en su posicion inicial.
-	call IMPRIME_BRICKS
+	;Restarura la primera direccion de la bola.
+	mov [bola_dir], first_direction
 	jmp mouse_no_clic
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -1139,6 +1140,7 @@ salir:				;inicia etiqueta salir
 		je mov_izq_arr
 		cmp bl, 3
 		je mov_der_arr
+		ret
 		mov_izq_arr:
 			dec [bola_col]
 			dec [bola_ren]
@@ -1159,7 +1161,6 @@ salir:				;inicia etiqueta salir
 			inc [bola_ren]
 			call IMPRIME_BOLA
 			ret
-		error:
 	endp
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;FIN PROCEDIMIENTOS;;;;;;
