@@ -61,6 +61,8 @@ lim_derecho 	equ		30
 ;Valores de referencia para la posición inicial del jugador y la bola
 ini_columna 	equ 	lim_derecho/2
 ini_renglon 	equ 	22
+; Valor de referencia para la primer direccion de la bola
+first_direction equ		2
 
 ;Valores para la posición de los controles e indicadores dentro del juego
 ;Lives
@@ -143,7 +145,7 @@ bola_ren		db 		ini_renglon-1 		;renglón de la bola
 bola_pend 		db 		1 		;pendiente de desplazamiento de la bola
 bola_rap 		dw 		2 		;rapidez de la bola
 bola_dir		db 		1 		;dirección de la bola. 0 izquierda-abajo, 1 derecha-abajo, 2 izquierda-arriba, 3 derecha-arriba
-bola_status		db		0	; 0 N0 puede moverse, 1 SI puede moverse.
+bola_status		db		1	; 0 N0 puede moverse, 1 SI puede moverse.
 
 ;Variables que sirven de parámetros de entrada para el procedimiento IMPRIME_BOTON
 boton_caracter 	db 		0
@@ -476,8 +478,7 @@ boton_play2:
 	cambiar_color_boton 254d, bgAmarillo, stop_ren, stop_col
 
 	; COMIENZA A MOVERSE LA BOLITA
-	mov [bola_status], 0
-	mov [bola_dir], 3 ;La primer direccion que tomara sera 3 derecha-arriba
+	mov [bola_dir], first_direction ;La primer direccion que tomara sera 3 derecha-arriba
 	jmp can_play
 
 teclado_no_click:
@@ -1061,25 +1062,68 @@ salir:				;inicia etiqueta salir
 	BALL_CAN_MOVE proc
 		get_ball_position
 		cmp ah, 1
-		jge ball_can_move1 ; Si salta, es que se no sobrepasa el limite izquierdo del juego.
-		mov [bola_status], 0
-		ret
-		ball_can_move1:
-			cmp ah, 29
-			jbe ball_can_move2 ;Si salta, es que la bola no sobrepasa el limite derecho.
-			mov [bola_status], 0
-			ret
-		ball_can_move2:
+		je choque_izq
+		cmp ah, 30
+		je choque_der
+		jmp sin_choque_hor
+		choque_izq:
+			;CHOCARA EN EL LIMITE IZQUIERDO, debe cambiar de direccion.
+			cmp [bola_dir], 0
+			je choque_aba_izq
+			mov [bola_dir], 3
+			jmp sin_choques
+			choque_aba_izq:
+				mov [bola_dir], 1
+				jmp sin_choques
+		choque_der:
+			;CHOCARA EN EL LIMITE DERECHO, debe cambiar de direccion.
+			cmp [bola_dir], 1
+			je choque_aba_der
+			mov [bola_dir], 2
+			jmp sin_choques
+			choque_aba_der:
+				mov [bola_dir], 0
+				jmp sin_choques
+		sin_choque_hor:
 			cmp al, 1
-			jge ball_can_move3 ;Si salta, es que la bola no sobrepasa el limite superior.
+			jbe choque_sup
+			cmp al, 22
+			je choque_inf
+			; No habra choque horizontal ni vertical, la bola puede moverse.
+			jmp sin_choques
+		choque_sup:
+			;CHOCARA EN EL LIMITE SUPERIOR, debe cambiar de direccion.
+			cmp [bola_dir], 2
+			je choque_arr_izq
+			mov [bola_dir], 1
+			jmp sin_choques
+			choque_arr_izq:
+				mov [bola_dir], 0
+				jmp sin_choques
+		choque_inf:
+			;CHOCARA EN EL LIMITE INFERIOR, debe cambiar de direccion.
+			mov bl,[player_col]
+			sub bl, 2
+			cmp ah, bl
+			jge salvada
+			; En caso que se encuentre en fuera del rango del jugador, se acaba el juego.
 			mov [bola_status], 0
 			ret
-		ball_can_move3:
-			cmp al, 25
-			jbe can_move
-			mov [bola_status], 0 ;Si salta, es que la bola no sobrepasa el limite inferior.
-			ret
-		can_move:
+			salvada:
+				add bl, 4
+				cmp ah, bl
+				jbe salvada1
+				mov [bola_status], 0
+				ret
+			salvada1:
+				cmp [bola_dir], 0
+				je sigue_el_juego
+				mov [bola_dir], 3
+				jmp sin_choques
+			sigue_el_juego:
+				mov [bola_dir], 2
+				jmp sin_choques
+		sin_choques:
 			mov [bola_status], 1
 		ret
 	endp
