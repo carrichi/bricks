@@ -110,6 +110,11 @@ blank			db 		"     "
 player_lives 	db 		3
 player_score 	dw 		0
 player_hiscore 	dw 		0
+;player_status - Indica el estado en el que se encuentra el jugador.
+; 0 - Juego en STOP
+; 1 - Juego en PLAY (en curso)
+; 2 - Juego en PAUSE (en pausa)
+player_status	db		0
 
 player_col		db 		ini_columna
 player_ren		db 		ini_renglon
@@ -281,9 +286,22 @@ lee_mouse	macro
 	int 33h
 endm
  
-int_teclado	macro	;para entradas del teclado 
-	mov ah,01h 	;opcion 01, modifica bandera Z, si Z = 1, no hay datos en buffer de teclado. Si Z = 0, hay datos en el buffer de teclado
+
+;lee_teclado - Lee el buffer.
+;AH = 10h
+;Devuelve:
+;AH = BIOS scan code
+;AL = ASCII character
+
+lee_teclado	macro	;para entradas del teclado 
+	mov ah,10h 	
 	int 16h		;interrupcion 16h (maneja la entrada del teclado)
+endm
+
+;clear_buffer - Limpia el buffer a través de la opción 0C de AH.
+clear_buffer macro
+	mov ah, 0Ch
+	int 21h
 endm
 
 ;comprueba_mouse - Revisa si el driver del mouse existe
@@ -314,7 +332,7 @@ inicio:					;etiqueta inicio
 	lea dx,[no_mouse]
 	mov ax,0900h	;opcion 9 para interrupcion 21h
 	int 21h			;interrupcion 21h. Imprime cadena.
-	jmp teclado		;salta a 'teclado'
+	jmp salir_teclado		;Solicitara [enter] para terminar la ejecucion.
 imprime_ui:
 	clear 					;limpia pantalla
 	oculta_cursor_teclado	;oculta cursor del mouse
@@ -333,6 +351,13 @@ mouse_no_clic:
 mouse:
 	lee_mouse
 conversion_mouse:
+
+	;IMPLEMENTACION PARA LIMITAR EL TECLADO AL CAMPO DE JUEGO
+	cmp cx,248
+	jg continuacion
+	posiciona_cursor_mouse 249,dx
+
+continuacion:
 	;Leer la posicion del mouse y hacer la conversion a resolucion
 	;80x25 (columnas x renglones) en modo texto
 	mov ax,dx 			;Copia DX en AX. DX es un valor entre 0 y 199 (renglon)
@@ -365,6 +390,8 @@ conversion_mouse:
 	cmp dx, 19
 	jge mas_botones ;Da el salto si el click fue en un reglon mayor o igual a 19.
 
+	;Si no se dieron saltos, significa que no ocurrio ningun click.
+	
 	jmp mouse_no_clic ;Si no se dieron saltos, se determinara que no se dio ningun click.
 
 ; SE DIO CLICK EN EL RENGLON 0
@@ -417,23 +444,60 @@ boton_play1:
 boton_play2:
 	;Ya se encuentra dentro de cualquier parte del boton PLAY.
 	;Se implementa el procedimiento de inicio del juego.
-	;can_play
-	;get_player_position
-	;cmp [col_aux],27
-	;jbe mover_derecha
-	; Si no dio el salto, llego al limite de la zona de juego
-	jmp lee_teclado ; Al comienzo del juego, se pone a la espera de instrucciones.
+	mov [player_status], 1 ;El juego comienza, el 'status' es 1.
+	mov [player_score], 1
+	call IMPRIME_SCORE
+	clear_buffer
+	jmp listen_teclado ; Al comienzo del juego, se pone a la espera de instrucciones.
 
-lee_teclado:
-;salida_q:
-	;mov ah,01h 	;opcion 01, modifica bandera Z, si Z = 1, no hay datos en buffer de teclado. Si Z = 0, hay datos en el buffer de teclado
-	;int 16h		;interrupcion 16h (maneja la entrada del teclado)
+teclado_no_click:
+	jmp listen_teclado
 
-	mov ah,08h
-	int 21h
+listen_teclado:
+	lee_teclado
 	cmp al, 6Ah		;compara la entrada de teclado si fue [j]
-	jnz lee_teclado 	;Sale del ciclo hasta que presiona la tecla [j]
-	jmp mover_izquierda
+	je mover_izquierda
+	cmp al, 6Bh
+	je mover_derecha
+	cmp al, 20h
+	je boton_pause2
+	cmp al, 1Bh
+	je boton_stop2
+	jmp teclado_no_click
+
+listen_teclado_k:
+	cmp al, 6Bh
+	jnz listen_teclado ;Sale del ciclo hasta que presiona la tecla [k]
+	jmp mover_derecha
+
+; En el caso que se presione la flecha izquierda, el jugador se mueve a la izquierda.
+mover_derecha:
+	; Si no dio el salto, llego al limite de la zona de juego
+	get_player_position
+	cmp [col_aux],27
+	jbe mover_derecha_aceptado
+	jmp listen_teclado
+
+mover_derecha_aceptado:
+	; Se verifica si se encuentra en los limites de la zona de juego.
+	call BORRA_JUGADOR
+	inc [player_col]	
+	call IMPRIME_JUGADOR
+	jmp listen_teclado
+
+; En el caso que se presione la flecha izquierda, el jugador se mueve a la izquierda.
+mover_izquierda:
+	; Se realizará el movimiento si esta dentro del rango de juego.
+	get_player_position
+	cmp [col_aux], 4
+	jge mover_izquierda_aceptado
+	jmp listen_teclado
+
+mover_izquierda_aceptado:
+	call BORRA_JUGADOR
+	dec [player_col]
+	call IMPRIME_JUGADOR
+	jmp listen_teclado
 
 ;;;;;;;;;;;;;;;
 ; BOTON PAUSE
@@ -450,9 +514,11 @@ boton_pause1:
 	jmp mouse_no_clic
 boton_pause2:
 	;Ya se encuentra dentro de cualquier parte del boton.
-	get_player_position
-	cmp [col_aux], 4
-	jge mover_izquierda
+	mov [player_status], 2 ;El juego esta en pausa, el 'status' es 2.
+	mov [player_score], 2
+	call IMPRIME_SCORE
+	clear_buffer
+	jmp mouse_no_clic
 
 ;;;;;;;;;;;;;;;
 ; BOTON STOP
@@ -469,30 +535,22 @@ boton_stop1:
 	jmp mouse_no_clic
 boton_stop2:
 	;Ya se encuentra dentro de cualquier parte del boton.
-	jmp salir
+	mov [player_status], 3 ;El juego esta en stop, el 'status' es 3.
+	mov [player_score], 3
+	call IMPRIME_SCORE
+	clear_buffer
+	jmp mouse_no_clic
+
+;;;;;;;;;;;;;;;;;;;;;;;
+; Etiquetas de SALIDA ;
+;;;;;;;;;;;;;;;;;;;;;;;
 
 ;Si no se encontró el driver del mouse, muestra un mensaje y el usuario debe salir tecleando [enter]
-teclado:
+salir_teclado:
 	mov ah,08h
 	int 21h
 	cmp al,0Dh		;compara la entrada de teclado si fue [enter]
-	jnz teclado 	;Sale del ciclo hasta que presiona la tecla [enter]
-
-
-; En el caso que se presione la flecha izquierda, el jugador se mueve a la izquierda.
-mover_derecha:
-	; Se verifica si se encuentra en los limites de la zona de juego.
-	call BORRA_JUGADOR
-	inc [player_col]	
-	call IMPRIME_JUGADOR
-	jmp mouse_no_clic
-
-; En el caso que se presione la flecha izquierda, el jugador se mueve a la izquierda.
-mover_izquierda:
-	call BORRA_JUGADOR
-	dec [player_col]
-	call IMPRIME_JUGADOR
-	jmp lee_teclado
+	jnz salir_teclado 	;Sale del ciclo hasta que presiona la tecla [enter]
 
 salir:				;inicia etiqueta salir
 	clear 			;limpia pantalla
