@@ -1068,6 +1068,12 @@ salir:				;inicia etiqueta salir
 		je choque_izq
 		cmp ah, 30
 		je choque_der
+		cmp bl, 3
+		je act_score_n3
+		cmp bl, 2
+		je act_score_n2
+		cmp bl, 1
+		je act_score
 		jmp sin_choque_hor
 		choque_izq:
 			;CHOCARA EN EL LIMITE IZQUIERDO, debe cambiar de direccion.
@@ -1087,6 +1093,31 @@ salir:				;inicia etiqueta salir
 			choque_aba_der:
 				mov [bola_dir], 0
 				jmp sin_choques
+		act_score:
+			inc [player_score]
+			mov ax,[player_score]
+			cmp ax,[player_hiscore]
+			jg act_hiscore
+			call IMPRIME_SCORE
+		act_score_n2:
+			inc [player_score]
+			inc [player_score]
+			mov ax,[player_score]
+			cmp ax,[player_hiscore]
+			jg act_hiscore
+			call IMPRIME_SCORE
+		act_score_n3:
+			inc [player_score]
+			inc [player_score]
+			inc [player_score]
+			mov ax,[player_score]
+			cmp ax,[player_hiscore]
+			jg act_hiscore
+			call IMPRIME_SCORE
+		act_hiscore:
+			mov ax,[player_score]
+			mov [player_hiscore],ax
+			call IMPRIME_SCORES
 		sin_choque_hor:
 			cmp al, 1
 			jbe choque_sup
