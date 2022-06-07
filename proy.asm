@@ -280,12 +280,25 @@ lee_mouse	macro
 	mov ax,0003h
 	int 33h
 endm
+ 
+int_teclado	macro	;para entradas del teclado 
+	mov ah,01h 	;opcion 01, modifica bandera Z, si Z = 1, no hay datos en buffer de teclado. Si Z = 0, hay datos en el buffer de teclado
+	int 16h		;interrupcion 16h (maneja la entrada del teclado)
+endm
 
 ;comprueba_mouse - Revisa si el driver del mouse existe
 comprueba_mouse 	macro
 	mov ax,0		;opcion 0
 	int 33h			;llama interrupcion 33h para manejo del mouse, devuelve un valor en AX
 					;Si AX = 0000h, no existe el driver. Si AX = FFFFh, existe driver
+endm
+
+;get_player_position - Obtiene la posicion central del jugador
+get_player_position		macro
+	mov al,[player_col]
+	mov ah,[player_ren]
+	mov [col_aux],al
+	mov [ren_aux],ah
 endm
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;Fin Macros;;;;;;;
@@ -371,7 +384,6 @@ boton_x3:
 	;Se cumplieron todas las condiciones
 	jmp salir
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Lógica para el resto de botones;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -405,7 +417,23 @@ boton_play1:
 boton_play2:
 	;Ya se encuentra dentro de cualquier parte del boton PLAY.
 	;Se implementa el procedimiento de inicio del juego.
-	jmp salir
+	;can_play
+	;get_player_position
+	;cmp [col_aux],27
+	;jbe mover_derecha
+	; Si no dio el salto, llego al limite de la zona de juego
+	jmp lee_teclado ; Al comienzo del juego, se pone a la espera de instrucciones.
+
+lee_teclado:
+;salida_q:
+	;mov ah,01h 	;opcion 01, modifica bandera Z, si Z = 1, no hay datos en buffer de teclado. Si Z = 0, hay datos en el buffer de teclado
+	;int 16h		;interrupcion 16h (maneja la entrada del teclado)
+
+	mov ah,08h
+	int 21h
+	cmp al, 6Ah		;compara la entrada de teclado si fue [j]
+	jnz lee_teclado 	;Sale del ciclo hasta que presiona la tecla [j]
+	jmp mover_izquierda
 
 ;;;;;;;;;;;;;;;
 ; BOTON PAUSE
@@ -422,8 +450,9 @@ boton_pause1:
 	jmp mouse_no_clic
 boton_pause2:
 	;Ya se encuentra dentro de cualquier parte del boton.
-	;Se implementa el procedimiento de inicio del juego.
-	jmp salir
+	get_player_position
+	cmp [col_aux], 4
+	jge mover_izquierda
 
 ;;;;;;;;;;;;;;;
 ; BOTON STOP
@@ -440,7 +469,6 @@ boton_stop1:
 	jmp mouse_no_clic
 boton_stop2:
 	;Ya se encuentra dentro de cualquier parte del boton.
-	;Se implementa el procedimiento de inicio del juego.
 	jmp salir
 
 ;Si no se encontró el driver del mouse, muestra un mensaje y el usuario debe salir tecleando [enter]
@@ -449,6 +477,22 @@ teclado:
 	int 21h
 	cmp al,0Dh		;compara la entrada de teclado si fue [enter]
 	jnz teclado 	;Sale del ciclo hasta que presiona la tecla [enter]
+
+
+; En el caso que se presione la flecha izquierda, el jugador se mueve a la izquierda.
+mover_derecha:
+	; Se verifica si se encuentra en los limites de la zona de juego.
+	call BORRA_JUGADOR
+	inc [player_col]	
+	call IMPRIME_JUGADOR
+	jmp mouse_no_clic
+
+; En el caso que se presione la flecha izquierda, el jugador se mueve a la izquierda.
+mover_izquierda:
+	call BORRA_JUGADOR
+	dec [player_col]
+	call IMPRIME_JUGADOR
+	jmp lee_teclado
 
 salir:				;inicia etiqueta salir
 	clear 			;limpia pantalla
@@ -809,7 +853,22 @@ salir:				;inicia etiqueta salir
 	endp	 			;Indica fin de procedimiento UI para el ensamblador
 	
 	BORRA_JUGADOR proc
-		;Implementar
+		get_player_position
+		
+		posiciona_cursor [ren_aux],[col_aux]
+		imprime_caracter_color 177,cCyanClaro,bgNegro
+		dec [col_aux]
+		posiciona_cursor [ren_aux],[col_aux]
+		imprime_caracter_color 177,cNegro,bgNegro
+		dec [col_aux]
+		posiciona_cursor [ren_aux],[col_aux]
+		imprime_caracter_color 177,cNegro,bgNegro
+		add [col_aux],3
+		posiciona_cursor [ren_aux],[col_aux]
+		imprime_caracter_color 177,cNegro,bgNegro
+		inc [col_aux]
+		posiciona_cursor [ren_aux],[col_aux]
+		imprime_caracter_color 177,cNegro,bgNegro
 		ret
 	endp
 
@@ -859,6 +918,7 @@ salir:				;inicia etiqueta salir
 		mapa_fin:
 		ret
 	endp
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;FIN PROCEDIMIENTOS;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
