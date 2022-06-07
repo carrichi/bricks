@@ -824,12 +824,14 @@ salir:				;inicia etiqueta salir
 	endp
 
 	BORRA_SCORE proc
-		;Implementar
+		mov [player_score],0	;Volvemos a igualar el score a 0
+		call IMPRIME_SCORE
 		ret
 	endp
 
 	BORRA_HISCORE proc
-		;Implementar
+		mov [player_hiscore],0	;Igulamos el hi-score a 0
+		call IMPRIME_HISCORE
 		ret
 	endp
 
