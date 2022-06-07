@@ -143,6 +143,7 @@ bola_ren		db 		ini_renglon-1 		;renglón de la bola
 bola_pend 		db 		1 		;pendiente de desplazamiento de la bola
 bola_rap 		dw 		2 		;rapidez de la bola
 bola_dir		db 		1 		;dirección de la bola. 0 izquierda-abajo, 1 derecha-abajo, 2 izquierda-arriba, 3 derecha-arriba
+bola_status		db		0	; 0 N0 puede moverse, 1 SI puede moverse.
 
 ;Variables que sirven de parámetros de entrada para el procedimiento IMPRIME_BOTON
 boton_caracter 	db 		0
@@ -322,6 +323,14 @@ get_player_position		macro
 	mov [ren_aux],ah
 endm
 
+;get_ball_position - Obtiene la posicion de la bola
+get_ball_position	macro
+	mov ah, [bola_col]
+	mov al, [bola_ren]
+	mov [col_aux], ah
+	mov [ren_aux], al
+endm
+
 cambiar_color_boton macro char, fondo, renglon, columna
 	mov [boton_caracter], char
 	mov [boton_color], fondo
@@ -405,6 +414,9 @@ continuacion:
 	
 	jmp mouse_no_clic ;Si no se dieron saltos, se determinara que no se dio ningun click.
 
+;;;;;;;;;;;
+; BOTON X ;
+;;;;;;;;;;;
 ; SE DIO CLICK EN EL RENGLON 0
 boton_x:
 	jmp boton_x1
@@ -454,6 +466,7 @@ boton_play1:
 	jmp mouse_no_clic
 boton_play2:
 	;Ya se encuentra dentro de cualquier parte del boton PLAY.
+	mov [status], 1
 	;Se implementa el procedimiento de inicio del juego.
 	clear_buffer
 	; Se indica que el boton fue presionado
@@ -461,10 +474,29 @@ boton_play2:
 	; Se 'desactivan' los otros dos botones
 	cambiar_color_boton 19d, bgAmarillo, pause_ren, pause_col
 	cambiar_color_boton 254d, bgAmarillo, stop_ren, stop_col
-	jmp listen_teclado ; Al comienzo del juego, se pone a la espera de instrucciones.
+
+	; COMIENZA A MOVERSE LA BOLITA
+	mov [bola_status], 0
+	mov [bola_dir], 3 ;La primer direccion que tomara sera 3 derecha-arriba
+	jmp can_play
 
 teclado_no_click:
+	jmp listen_teclado ; Al comienzo del juego, se pone a la espera de instrucciones.
+
+can_play:
+	cmp [status], 1
+	je play
+	jmp mouse_no_clic
+
+play:
 	jmp listen_teclado
+continue:
+	call BALL_CAN_MOVE
+	cmp [bola_status], 1
+	je move_ball_accepted
+	jmp boton_stop2
+move_ball_accepted:
+	call MOVE_BALL
 
 listen_teclado:
 	lee_teclado
@@ -478,9 +510,7 @@ listen_teclado:
 	je boton_stop2
 	cmp al, 0Dh		;compara la entrada de teclado si fue [enter]
 	je boton_play2
-	cmp al, 71h		;compara la entrada de teclado si fue [q]
-	je salir
-	jmp teclado_no_click
+	jmp listen_teclado
 
 ; En el caso que se presione la flecha izquierda, el jugador se mueve a la izquierda.
 mover_derecha:
@@ -488,14 +518,14 @@ mover_derecha:
 	get_player_position
 	cmp [col_aux],27
 	jbe mover_derecha_aceptado
-	jmp listen_teclado
+	jmp continue
 
 mover_derecha_aceptado:
 	; Se verifica si se encuentra en los limites de la zona de juego.
 	call BORRA_JUGADOR
 	inc [player_col]	
 	call IMPRIME_JUGADOR
-	jmp listen_teclado
+	jmp continue
 
 ; En el caso que se presione la flecha izquierda, el jugador se mueve a la izquierda.
 mover_izquierda:
@@ -503,13 +533,13 @@ mover_izquierda:
 	get_player_position
 	cmp [col_aux], 4
 	jge mover_izquierda_aceptado
-	jmp listen_teclado
+	jmp continue
 
 mover_izquierda_aceptado:
 	call BORRA_JUGADOR
 	dec [player_col]
 	call IMPRIME_JUGADOR
-	jmp listen_teclado
+	jmp continue
 
 ;;;;;;;;;;;;;;;
 ; BOTON PAUSE
@@ -526,6 +556,7 @@ boton_pause1:
 	jmp mouse_no_clic
 boton_pause2:
 	;Ya se encuentra dentro de cualquier parte del boton.
+	mov [status], 2
 	clear_buffer
 	; Se cambia el color del boton de PLAY para indicar que se desactivo.
 	cambiar_color_boton 16d, bgAmarillo, play_ren, play_col
@@ -533,7 +564,7 @@ boton_pause2:
 	cambiar_color_boton 254d, bgAmarillo, stop_ren, stop_col
 	; Se cambia el color del boton PAUSE para indicar que se activo.
 	cambiar_color_boton 19d, bgCyanClaro, pause_ren, pause_col
-	jmp mouse_no_clic
+	jmp can_play
 
 ;;;;;;;;;;;;;;;
 ; BOTON STOP
@@ -550,6 +581,7 @@ boton_stop1:
 	jmp mouse_no_clic
 boton_stop2:
 	;Ya se encuentra dentro de cualquier parte del boton.
+	mov [status], 0
 	;Limpia el buffer para que el jugador ya no pueda moverse.
 	clear_buffer
 	; Se cambia el color del boton de PLAY para indicar que se desactivo.
@@ -568,6 +600,14 @@ boton_stop2:
 	call IMPRIME_JUGADOR
 	;Se reacomoda la bola a su posicion inicial.
 	;      Por implementar....
+	call BORRA_BOLA
+	mov al, ini_columna
+	mov ah, ini_renglon-1
+	mov [bola_col], al
+	mov [bola_ren], ah
+	call IMPRIME_BOLA
+	;Coloca los ladrillos en su posicion inicial.
+	call IMPRIME_BRICKS
 	jmp mouse_no_clic
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -905,10 +945,7 @@ salir:				;inicia etiqueta salir
 
 	;Imprime la bola de juego, que recibe como parámetros las variables bola_col y bola_ren, que indican la posición de la bola
 	IMPRIME_BOLA proc
-		mov ah,[bola_col]
-		mov al,[bola_ren]
-		mov [col_aux],ah
-		mov [ren_aux],al
+		get_ball_position
 		posiciona_cursor [ren_aux],[col_aux]
 		imprime_caracter_color 2d,cCyanClaro,bgNegro 
 		ret
@@ -916,7 +953,9 @@ salir:				;inicia etiqueta salir
 
 	;Borra la bola de juego, que recibe como parámetros las variables bola_col y bola_ren, que indican la posición de la bola
 	BORRA_BOLA proc
-		;Implementar
+		get_ball_position
+		posiciona_cursor [ren_aux], [col_aux]
+		imprime_caracter_color 2d,cNegro,bgNegro 
 		ret
 	endp
 
@@ -1019,6 +1058,65 @@ salir:				;inicia etiqueta salir
 		ret
 	endp
 
+	BALL_CAN_MOVE proc
+		get_ball_position
+		cmp ah, 1
+		jge ball_can_move1 ; Si salta, es que se no sobrepasa el limite izquierdo del juego.
+		mov [bola_status], 0
+		ret
+		ball_can_move1:
+			cmp ah, 29
+			jbe ball_can_move2 ;Si salta, es que la bola no sobrepasa el limite derecho.
+			mov [bola_status], 0
+			ret
+		ball_can_move2:
+			cmp al, 1
+			jge ball_can_move3 ;Si salta, es que la bola no sobrepasa el limite superior.
+			mov [bola_status], 0
+			ret
+		ball_can_move3:
+			cmp al, 25
+			jbe can_move
+			mov [bola_status], 0 ;Si salta, es que la bola no sobrepasa el limite inferior.
+			ret
+		can_move:
+			mov [bola_status], 1
+		ret
+	endp
+
+	MOVE_BALL proc
+		call BORRA_BOLA
+		mov bl, [bola_dir]
+		cmp bl, 0
+		je mov_izq_abj
+		cmp bl, 1
+		je mov_der_abj
+		cmp bl, 2
+		je mov_izq_arr
+		cmp bl, 3
+		je mov_der_arr
+		mov_izq_arr:
+			dec [bola_col]
+			dec [bola_ren]
+			call IMPRIME_BOLA
+			ret
+		mov_der_arr:
+			inc [bola_col]
+			dec [bola_ren]
+			call IMPRIME_BOLA
+			ret
+		mov_izq_abj:
+			dec [bola_col]
+			inc [bola_ren]
+			call IMPRIME_BOLA
+			ret
+		mov_der_abj:
+			inc [bola_col]
+			inc [bola_ren]
+			call IMPRIME_BOLA
+			ret
+		error:
+	endp
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;FIN PROCEDIMIENTOS;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
