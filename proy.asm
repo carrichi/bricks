@@ -75,27 +75,33 @@ score_col 		equ 	lim_derecho+7
 
 ;Botón STOP
 stop_col 		equ 	lim_derecho+15
-stop_ren 		equ 	19
+stop_ren 		equ 	18
 stop_izq 		equ 	stop_col
 stop_der 		equ 	stop_col+2
 stop_sup 		equ 	stop_ren
 stop_inf 		equ 	stop_ren+2
+stopKeyStr_col	equ		22
+stopKeyStr_ren	equ		44
 
 ;Botón PAUSE
 pause_col 		equ 	lim_derecho+25
-pause_ren 		equ 	19
+pause_ren 		equ 	18
 pause_izq 		equ 	pause_col
 pause_der 		equ 	pause_col+2
 pause_sup 		equ 	pause_ren
 pause_inf 		equ 	pause_ren+2
+pauseKeyStr_col	equ		22
+pauseKeyStr_ren	equ		53
 
 ;Botón PLAY
 play_col 		equ 	lim_derecho+35
-play_ren 		equ 	19
+play_ren 		equ 	18
 play_izq 		equ 	play_col
 play_der 		equ 	play_col+2
 play_sup 		equ 	play_ren
 play_inf 		equ 	play_col+2
+playKeyStr_col	equ		22
+playKeyStr_ren	equ		63
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -107,15 +113,12 @@ scoreStr 		db 		"SCORE"
 hiscoreStr		db 		"HI-SCORE"
 livesStr		db 		"LIVES"
 blank			db 		"     "
+playKeyStr		db		"[ENTER]"
+pauseKeyStr		db		"[SPACE]"
+stopKeyStr		db		"[ESC]"
 player_lives 	db 		3
 player_score 	dw 		0
 player_hiscore 	dw 		0
-;player_status - Indica el estado en el que se encuentra el jugador.
-; 0 - Juego en STOP
-; 1 - Juego en PLAY (en curso)
-; 2 - Juego en PAUSE (en pausa)
-player_status	db		0
-
 player_col		db 		ini_columna
 player_ren		db 		ini_renglon
 
@@ -318,6 +321,14 @@ get_player_position		macro
 	mov [col_aux],al
 	mov [ren_aux],ah
 endm
+
+cambiar_color_boton macro char, fondo, renglon, columna
+	mov [boton_caracter], char
+	mov [boton_color], fondo
+	mov [boton_renglon], renglon
+	mov [boton_columna], columna
+	call IMPRIME_BOTON
+endm
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;Fin Macros;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -387,8 +398,8 @@ continuacion:
 	je boton_x ;Da el salto si el click fue en el renglon 0.
 
 	;Se revisa si el click fue en el renglon 19 (reglon de los botones STOP, PAUSE y START)
-	cmp dx, 19
-	jge mas_botones ;Da el salto si el click fue en un reglon mayor o igual a 19.
+	cmp dx, 18
+	jge mas_botones ;Da el salto si el click fue en un reglon mayor o igual a 18.
 
 	;Si no se dieron saltos, significa que no ocurrio ningun click.
 	
@@ -444,10 +455,12 @@ boton_play1:
 boton_play2:
 	;Ya se encuentra dentro de cualquier parte del boton PLAY.
 	;Se implementa el procedimiento de inicio del juego.
-	mov [player_status], 1 ;El juego comienza, el 'status' es 1.
-	mov [player_score], 1
-	call IMPRIME_SCORE
 	clear_buffer
+	; Se indica que el boton fue presionado
+	cambiar_color_boton 16d, bgCyanClaro, play_ren, play_col
+	; Se 'desactivan' los otros dos botones
+	cambiar_color_boton 19d, bgAmarillo, pause_ren, pause_col
+	cambiar_color_boton 254d, bgAmarillo, stop_ren, stop_col
 	jmp listen_teclado ; Al comienzo del juego, se pone a la espera de instrucciones.
 
 teclado_no_click:
@@ -457,18 +470,17 @@ listen_teclado:
 	lee_teclado
 	cmp al, 6Ah		;compara la entrada de teclado si fue [j]
 	je mover_izquierda
-	cmp al, 6Bh
+	cmp al, 6Bh		;compara la entrada de teclado si fue [k]
 	je mover_derecha
-	cmp al, 20h
+	cmp al, 20h		;compara la entrada de teclado si fue [space]
 	je boton_pause2
-	cmp al, 1Bh
+	cmp al, 1Bh		;compara la entrada de teclado si fue [esc]
 	je boton_stop2
+	cmp al, 0Dh		;compara la entrada de teclado si fue [enter]
+	je boton_play2
+	cmp al, 71h		;compara la entrada de teclado si fue [q]
+	je salir
 	jmp teclado_no_click
-
-listen_teclado_k:
-	cmp al, 6Bh
-	jnz listen_teclado ;Sale del ciclo hasta que presiona la tecla [k]
-	jmp mover_derecha
 
 ; En el caso que se presione la flecha izquierda, el jugador se mueve a la izquierda.
 mover_derecha:
@@ -514,10 +526,13 @@ boton_pause1:
 	jmp mouse_no_clic
 boton_pause2:
 	;Ya se encuentra dentro de cualquier parte del boton.
-	mov [player_status], 2 ;El juego esta en pausa, el 'status' es 2.
-	mov [player_score], 2
-	call IMPRIME_SCORE
 	clear_buffer
+	; Se cambia el color del boton de PLAY para indicar que se desactivo.
+	cambiar_color_boton 16d, bgAmarillo, play_ren, play_col
+	; Se cambia el color del boton PAUSE para indicar que se desactivo.
+	cambiar_color_boton 254d, bgAmarillo, stop_ren, stop_col
+	; Se cambia el color del boton PAUSE para indicar que se activo.
+	cambiar_color_boton 19d, bgCyanClaro, pause_ren, pause_col
 	jmp mouse_no_clic
 
 ;;;;;;;;;;;;;;;
@@ -535,11 +550,15 @@ boton_stop1:
 	jmp mouse_no_clic
 boton_stop2:
 	;Ya se encuentra dentro de cualquier parte del boton.
-	mov [player_status], 3 ;El juego esta en stop, el 'status' es 3.
-	mov [player_score], 3
-	call IMPRIME_SCORE
 	;Limpia el buffer para que el jugador ya no pueda moverse.
 	clear_buffer
+	; Se cambia el color del boton de PLAY para indicar que se desactivo.
+	cambiar_color_boton 16d, bgAmarillo, play_ren, play_col
+	; Se cambia el color del boton PAUSE para indicar que se activo.
+	cambiar_color_boton 19d, bgAmarillo, pause_ren, pause_col
+	; Se cambia el color del boton STOP para indicar que se activo.
+	cambiar_color_boton 254d, bgCyanClaro, stop_ren, stop_col
+	;Se reacomoda al jugador en su posicion inicial.
 	;Se reacomoda al jugador en su posicion inicial.
 	call BORRA_JUGADOR
 	mov al, ini_columna
@@ -691,6 +710,19 @@ salir:				;inicia etiqueta salir
 		;Imprime cadena "HI-SCORE"
 		posiciona_cursor hiscore_ren,hiscore_col
 		imprime_cadena_color hiscoreStr,8,cGrisClaro,bgNegro
+
+		;Imprime cadena "[ESC]"
+		posiciona_cursor stopKeyStr_col, stopKeyStr_ren 
+		imprime_cadena_color stopKeyStr,5,cGrisClaro,bgNegro
+		
+		;Imprime cadena "[SPACE]"
+		posiciona_cursor pauseKeyStr_col, pauseKeyStr_ren
+		imprime_cadena_color pauseKeyStr,7,cGrisClaro,bgNegro
+
+		;Imprime cadena "[ENTER]"
+		posiciona_cursor playKeyStr_col, playKeyStr_ren
+		imprime_cadena_color playKeyStr,7,cGrisClaro,bgNegro
+
 		ret
 	endp
 
