@@ -538,7 +538,17 @@ boton_stop2:
 	mov [player_status], 3 ;El juego esta en stop, el 'status' es 3.
 	mov [player_score], 3
 	call IMPRIME_SCORE
+	;Limpia el buffer para que el jugador ya no pueda moverse.
 	clear_buffer
+	;Se reacomoda al jugador en su posicion inicial.
+	call BORRA_JUGADOR
+	mov al, ini_columna
+	mov ah, ini_renglon
+	mov [player_col], al
+	mov [player_ren], ah
+	call IMPRIME_JUGADOR
+	;Se reacomoda la bola a su posicion inicial.
+	;      Por implementar....
 	jmp mouse_no_clic
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -914,19 +924,19 @@ salir:				;inicia etiqueta salir
 		get_player_position
 		
 		posiciona_cursor [ren_aux],[col_aux]
-		imprime_caracter_color 177,cCyanClaro,bgNegro
+		imprime_caracter_color 223,cNegro,bgNegro
 		dec [col_aux]
 		posiciona_cursor [ren_aux],[col_aux]
-		imprime_caracter_color 177,cNegro,bgNegro
+		imprime_caracter_color 223,cNegro,bgNegro
 		dec [col_aux]
 		posiciona_cursor [ren_aux],[col_aux]
-		imprime_caracter_color 177,cNegro,bgNegro
+		imprime_caracter_color 223,cNegro,bgNegro
 		add [col_aux],3
 		posiciona_cursor [ren_aux],[col_aux]
-		imprime_caracter_color 177,cNegro,bgNegro
+		imprime_caracter_color 223,cNegro,bgNegro
 		inc [col_aux]
 		posiciona_cursor [ren_aux],[col_aux]
-		imprime_caracter_color 177,cNegro,bgNegro
+		imprime_caracter_color 223,cNegro,bgNegro
 		ret
 	endp
 
