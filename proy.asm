@@ -1125,7 +1125,6 @@ salir:				;inicia etiqueta salir
 			cmp al, 22
 			je choque_inf
 			; No habra choque horizontal ni vertical, la bola puede moverse.
-			call COMPRUEBA_COLOR
 			jmp sin_choques
 		choque_sup:
 			;CHOCARA EN EL LIMITE SUPERIOR, debe cambiar de direccion.
@@ -1164,6 +1163,7 @@ salir:				;inicia etiqueta salir
 				mov [bola_dir], 2
 				jmp sin_choques
 		sin_choques:
+			call COMPRUEBA_COLOR
 			mov [bola_status], 1
 		ret
 	endp
