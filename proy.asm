@@ -500,6 +500,12 @@ move_ball_accepted:
 	call MOVE_BALL
 
 listen_teclado:
+	;Limitacion del mouse en PLAY
+	lee_mouse
+	cmp cx,248
+	jg continteclado
+	posiciona_cursor_mouse 249,dx
+continteclado:
 	lee_teclado
 	cmp al, 6Ah		;compara la entrada de teclado si fue [j]
 	je mover_izquierda
