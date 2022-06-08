@@ -478,6 +478,9 @@ boton_play2:
 	cambiar_color_boton 19d, bgAmarillo, pause_ren, pause_col
 	cambiar_color_boton 254d, bgAmarillo, stop_ren, stop_col
 
+	;Se imprime el numero de vidas disponible
+	call IMPRIME_LIVES
+
 	; COMIENZA A MOVERSE LA BOLITA
 	jmp can_play
 
@@ -600,7 +603,8 @@ boton_stop2:
 	;Verifica que aun queden vidas, en caso de que no, se reinicia el juego totalmente
 	mov al,[player_lives]
 	cmp al,0
-	jg continuestop
+	je continuestop
+	; Si no se dio el salto, es porque el jugador aun puede jugar.
 	call IMPRIME_DATOS_INICIALES
 	call IMPRIME_LIVES
 continuestop:
@@ -622,7 +626,11 @@ continuestop:
 	call IMPRIME_BOLA
 	;Restarura la primera direccion de la bola.
 	mov [bola_dir], first_direction
-	call BORRA_SCORE	;Restaura el score a ceros
+	;Restaura el score a ceros
+	call BORRA_SCORE
+	;Restaura el numero de vidas
+	mov [player_lives], 3
+	call IMPRIME_LIVES
 	jmp mouse_no_clic
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -925,7 +933,6 @@ salir:				;inicia etiqueta salir
 		xor cx,cx
 		cmp [player_lives],0
 		je validaborrar
-		sub [player_lives],1
 	validaborrar:
 		mov di,lives_col+20
 		mov cl,3
@@ -1103,10 +1110,10 @@ salir:				;inicia etiqueta salir
 	BALL_CAN_MOVE proc
 		get_ball_position
 		cmp ah, 1
-		je choque_izq
+		je choque_izq ; Si hace un salto, quiere decir que si mantiene la misma direccion se saldra la bola del juego.
 		cmp ah, 30
-		je choque_der
-		jmp sin_choque_hor
+		je choque_der ;Si hace el salto, significa que la bola puede salirse por el lado derecho del juego.
+		jmp sin_choque_hor ;Si llego hasta aqui, es que se encuentra dentro de los limites del juego (limites izquierdo y derecho).
 		choque_izq:
 			;CHOCARA EN EL LIMITE IZQUIERDO, debe cambiar de direccion.
 			cmp [bola_dir], 0
@@ -1125,11 +1132,11 @@ salir:				;inicia etiqueta salir
 			choque_aba_der:
 				mov [bola_dir], 0
 				jmp sin_choques
-		sin_choque_hor:
+		sin_choque_hor: ; La bola no se encuentra pegada al limite izquierdo ni al derecho.
 			cmp al, 1
-			jbe choque_sup
+			jbe choque_sup ;Si salta, significa que la bola se encuentra en el limite superior, si no cambia de direccion se saldra de la zona.
 			cmp al, 22
-			je choque_inf
+			je choque_inf ;Si salta, significa que la bola esta en el limite inferior, se verifica si el jugador la salvo o si no.
 			; No habra choque horizontal ni vertical, la bola puede moverse.
 			jmp sin_choques
 		choque_sup:
@@ -1143,23 +1150,57 @@ salir:				;inicia etiqueta salir
 				jmp sin_choques
 		choque_inf:
 			;CHOCARA EN EL LIMITE INFERIOR, debe cambiar de direccion.
-			mov bl,[player_col]
-			sub bl, 2
+			mov bl,[player_col] ; Para verificar si el jugador salvo a la bola solo es necesario comparar columnas, ya que se verifico anteriormente que estan en el mismo renglon.
+			sub bl, 2 ;Se restan 2 para tener la columna mas a la izquierda del jugador.
 			cmp ah, bl
-			jge salvada
+			jge salvada ;Si salta es que la bola se encuentra en el limite izquierdo del jugador o mas a la derecha.
+			; Dado que el jugador no salvo a la bola, debe restarse una vida.
+			call BORRA_LIVES
+			sub [player_lives],1 ;Se resta la vida
+			call IMPRIME_LIVES
+			;Si despues de eliminar dicha vida se verifica si puede continuar.
+			mov al, [player_lives]
+			cmp al, 0
+			jg can_continue ; Si salta es que tiene mas de 0 vidas, por lo tanto, se PAUSA el juego y se restaura al jugador y la bola.
+			;Si llega aqui es que no salvo a la bola y ya no puede continuar.
 			; En caso que se encuentre en fuera del rango del jugador, se acaba el juego.
 			mov [bola_status], 0
-			call BORRA_LIVES
-			call IMPRIME_LIVES
 			ret
 			salvada:
-				add bl, 4
+				add bl, 4 ;Se suman cuatro unidades para llegar a la columna mas a la derecha del jugador.
 				cmp ah, bl
-				jbe salvada1
+				jbe salvada1 ; Si salta se confirma que el jugador puede continuar.
+				;Si no puede continuar debe restarse una vida.
+				call BORRA_LIVES ; Primero limpia todas las vidas
+				sub [player_lives],1 ;Se resta la vida
+				call IMPRIME_LIVES ;Se vuelven a imprimir
+				;Si despues de eliminar dicha vida se verifica si puede continuar.
+				mov al, [player_lives]
+				cmp al, 0
+				jg can_continue ; Si salta es que tiene mas de 0 vidas, por lo tanto, se PAUSA el juego y se restaura al jugador y la bola.
+				;Si llega aqui es que no salvo a la bola y ya no puede continuar.
 				mov [bola_status], 0
-				call BORRA_LIVES
-				call IMPRIME_LIVES
 				ret
+				can_continue:
+					mov [bola_status], 1 ; Se asigna que puede seguir jugando
+					;Reacomoda al jugador
+					call BORRA_JUGADOR
+					mov al, ini_columna
+					mov ah, ini_renglon
+					mov [player_col], al
+					mov [player_ren], ah
+					call IMPRIME_JUGADOR
+					;Reacomoda la bola en su posicion inicial
+					call BORRA_BOLA
+					mov al, ini_columna
+					mov ah, ini_renglon-1
+					mov [bola_col], al
+					mov [bola_ren], ah
+					call IMPRIME_BOLA
+					;Restaura la primera direccion de la bola.
+					mov [bola_dir], first_direction
+					jmp boton_pause2 ; Se pone el juego en pausa.
+					ret
 			salvada1:
 				cmp [bola_dir], 0
 				je sigue_el_juego
