@@ -914,10 +914,7 @@ salir:				;inicia etiqueta salir
 		ret
 	endp
 
-<<<<<<< HEAD
-=======
-		;Imprime caracteres de color oscuro para representar la disminución de vidas
->>>>>>> a25bddbba28798d30d2dc7003128e38993421a68
+	;Imprime caracteres de color oscuro para representar la disminución de vidas
 	BORRA_LIVES proc 
 		xor cx,cx
 		cmp [player_lives],0
