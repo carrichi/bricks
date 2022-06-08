@@ -891,6 +891,8 @@ salir:				;inicia etiqueta salir
 		xor cx,cx
 		mov di,lives_col+20
 		mov cl,[player_lives]
+		cmp cl,1
+		jb notprintlives
 	imprime_live:
 		push cx
 		mov ax,di
@@ -899,6 +901,28 @@ salir:				;inicia etiqueta salir
 		add di,2
 		pop cx
 		loop imprime_live
+		ret
+	notprintlives:
+		;add player_lives,1
+		ret
+	endp
+
+	BORRA_LIVES proc 
+		xor cx,cx
+		cmp [player_lives],0
+		je validaborrar
+		sub [player_lives],1
+	validaborrar:
+		mov di,lives_col+20
+		mov cl,3
+	borra_live:
+		push cx
+		mov ax,di
+		posiciona_cursor lives_ren,al
+		imprime_caracter_color 0d,cNegro,bgNegro
+		add di,2
+		pop cx
+		loop borra_live
 		ret
 	endp
 
