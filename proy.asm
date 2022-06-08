@@ -591,6 +591,13 @@ boton_stop2:
 	cambiar_color_boton 19d, bgAmarillo, pause_ren, pause_col
 	; Se cambia el color del boton STOP para indicar que se activo.
 	cambiar_color_boton 254d, bgCyanClaro, stop_ren, stop_col
+	;Verifica que aun queden vidas, en caso de que no, se reinicia el juego totalmente
+	mov al,[player_lives]
+	cmp al,0
+	jg continuestop
+	call IMPRIME_DATOS_INICIALES
+	call IMPRIME_LIVES
+continuestop:
 	;Coloca los ladrillos en su posicion inicial.
 	call IMPRIME_BRICKS
 	;Se reacomoda al jugador en su posicion inicial.
@@ -886,7 +893,7 @@ salir:				;inicia etiqueta salir
 		ret
 	endp
 
-	;Imprime los caracteres ☻ que representan vidas. Inicialmente se imprime el número de 'player_lives'
+		;Imprime los caracteres ☻ que representan vidas. Inicialmente se imprime el número de 'player_lives'
 	IMPRIME_LIVES proc
 		xor cx,cx
 		mov di,lives_col+20
@@ -907,6 +914,10 @@ salir:				;inicia etiqueta salir
 		ret
 	endp
 
+<<<<<<< HEAD
+=======
+		;Imprime caracteres de color oscuro para representar la disminución de vidas
+>>>>>>> a25bddbba28798d30d2dc7003128e38993421a68
 	BORRA_LIVES proc 
 		xor cx,cx
 		cmp [player_lives],0
@@ -1117,7 +1128,6 @@ salir:				;inicia etiqueta salir
 			cmp al, 22
 			je choque_inf
 			; No habra choque horizontal ni vertical, la bola puede moverse.
-			call COMPRUEBA_COLOR
 			jmp sin_choques
 		choque_sup:
 			;CHOCARA EN EL LIMITE SUPERIOR, debe cambiar de direccion.
@@ -1136,12 +1146,16 @@ salir:				;inicia etiqueta salir
 			jge salvada
 			; En caso que se encuentre en fuera del rango del jugador, se acaba el juego.
 			mov [bola_status], 0
+			call BORRA_LIVES
+			call IMPRIME_LIVES
 			ret
 			salvada:
 				add bl, 4
 				cmp ah, bl
 				jbe salvada1
 				mov [bola_status], 0
+				call BORRA_LIVES
+				call IMPRIME_LIVES
 				ret
 			salvada1:
 				cmp [bola_dir], 0
@@ -1152,6 +1166,7 @@ salir:				;inicia etiqueta salir
 				mov [bola_dir], 2
 				jmp sin_choques
 		sin_choques:
+			call COMPRUEBA_COLOR
 			mov [bola_status], 1
 		ret
 	endp
