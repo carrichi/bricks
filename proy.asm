@@ -601,7 +601,6 @@ boton_stop2:
 	mov [player_ren], ah
 	call IMPRIME_JUGADOR
 	;Se reacomoda la bola a su posicion inicial.
-	;      Por implementar....
 	call BORRA_BOLA
 	mov al, ini_columna
 	mov ah, ini_renglon-1
@@ -610,6 +609,7 @@ boton_stop2:
 	call IMPRIME_BOLA
 	;Restarura la primera direccion de la bola.
 	mov [bola_dir], first_direction
+	call BORRA_SCORE	;Restaura el score a ceros
 	jmp mouse_no_clic
 
 ;;;;;;;;;;;;;;;;;;;;;;;
