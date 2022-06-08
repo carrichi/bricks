@@ -1250,7 +1250,7 @@ salir:				;inicia etiqueta salir
 	endp
 	
 	COMPRUEBA_COLOR proc
-		mov ah,08h ;obtener color(ah), caracter(al)
+		mov ah,0Dh ;obtener color(al)
 		int 10h
 		cmp al, 1h 	;Compara si es azul
 		je act_score_n3
