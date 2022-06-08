@@ -1068,12 +1068,6 @@ salir:				;inicia etiqueta salir
 		je choque_izq
 		cmp ah, 30
 		je choque_der
-		cmp bl, 3
-		je act_score_n3
-		cmp bl, 2
-		je act_score_n2
-		cmp bl, 1
-		je act_score
 		jmp sin_choque_hor
 		choque_izq:
 			;CHOCARA EN EL LIMITE IZQUIERDO, debe cambiar de direccion.
@@ -1093,37 +1087,13 @@ salir:				;inicia etiqueta salir
 			choque_aba_der:
 				mov [bola_dir], 0
 				jmp sin_choques
-		act_score:
-			inc [player_score]
-			mov ax,[player_score]
-			cmp ax,[player_hiscore]
-			jg act_hiscore
-			call IMPRIME_SCORE
-		act_score_n2:
-			inc [player_score]
-			inc [player_score]
-			mov ax,[player_score]
-			cmp ax,[player_hiscore]
-			jg act_hiscore
-			call IMPRIME_SCORE
-		act_score_n3:
-			inc [player_score]
-			inc [player_score]
-			inc [player_score]
-			mov ax,[player_score]
-			cmp ax,[player_hiscore]
-			jg act_hiscore
-			call IMPRIME_SCORE
-		act_hiscore:
-			mov ax,[player_score]
-			mov [player_hiscore],ax
-			call IMPRIME_SCORES
 		sin_choque_hor:
 			cmp al, 1
 			jbe choque_sup
 			cmp al, 22
 			je choque_inf
 			; No habra choque horizontal ni vertical, la bola puede moverse.
+			call COMPRUEBA_COLOR
 			jmp sin_choques
 		choque_sup:
 			;CHOCARA EN EL LIMITE SUPERIOR, debe cambiar de direccion.
@@ -1193,6 +1163,46 @@ salir:				;inicia etiqueta salir
 			inc [bola_col]
 			inc [bola_ren]
 			call IMPRIME_BOLA
+			ret
+	endp
+	
+	COMPRUEBA_COLOR proc
+		mov ah,08h ;obtener color(ah), caracter(al)
+		int 10h
+		cmp al, 1h 	;Compara si es azul
+		je act_score_n3
+		cmp al, 2h 	;Compara si es verde
+		je act_score_n2
+		cmp al, 4h 	;Compara si es rojo
+		je act_score
+		jmp no_color	;Salta si no encuentra los primeros tres colores
+		act_score:
+			add [player_score],1d
+			mov ax,[player_score]
+			cmp ax,[player_hiscore]
+			jg act_hiscore
+			call IMPRIME_SCORE
+			ret
+		act_score_n2:
+			add [player_score],2d
+			mov ax,[player_score]
+			cmp ax,[player_hiscore]
+			jg act_hiscore
+			call IMPRIME_SCORE
+			ret
+		act_score_n3:
+			add [player_score],3d
+			mov ax,[player_score]
+			cmp ax,[player_hiscore]
+			jg act_hiscore
+			call IMPRIME_SCORE
+			ret
+		act_hiscore:
+			mov ax,[player_score]
+			mov [player_hiscore],ax
+			call IMPRIME_SCORES
+			ret
+		no_color:
 			ret
 	endp
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
