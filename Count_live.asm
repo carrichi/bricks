@@ -1,4 +1,4 @@
-;Modificacion en las lineas (889 - 921), (1132 - 1145), para poder actualizar las vidas.
+;Modificacion en las lineas (585 - 602), (896 - 934), (1145 - 1156), para poder actualizar las vidas.
 
 title "Proyecto: Bricks" ;codigo opcional. Descripcion breve del programa, el texto entrecomillado se imprime como cabecera en cada página de código
 	.model small	;directiva de modelo de memoria, small => 64KB para memoria de programa y 64KB para memoria de datos
@@ -593,6 +593,13 @@ boton_stop2:
 	cambiar_color_boton 19d, bgAmarillo, pause_ren, pause_col
 	; Se cambia el color del boton STOP para indicar que se activo.
 	cambiar_color_boton 254d, bgCyanClaro, stop_ren, stop_col
+
+	mov al,[player_lives]
+	cmp al,0
+	jg continuestop
+	call IMPRIME_DATOS_INICIALES
+	call IMPRIME_LIVES
+continuestop:
 	;Coloca los ladrillos en su posicion inicial.
 	call IMPRIME_BRICKS
 	;Se reacomoda al jugador en su posicion inicial.
@@ -901,12 +908,18 @@ salir:				;inicia etiqueta salir
 		add di,2
 		pop cx
 		loop imprime_live
+		ret
 	notprintlives:
+		;add player_lives,1
 		ret
 	endp
 
 	BORRA_LIVES proc 
 		xor cx,cx
+		cmp [player_lives],0
+		je validaborrar
+		sub [player_lives],1
+	validaborrar:
 		mov di,lives_col+20
 		mov cl,3
 	borra_live:
@@ -1130,7 +1143,6 @@ salir:				;inicia etiqueta salir
 			jge salvada
 			; En caso que se encuentre en fuera del rango del jugador, se acaba el juego.
 			mov [bola_status], 0
-			sub player_lives,1
 			call BORRA_LIVES
 			call IMPRIME_LIVES
 			ret
@@ -1139,7 +1151,6 @@ salir:				;inicia etiqueta salir
 				cmp ah, bl
 				jbe salvada1
 				mov [bola_status], 0
-				sub player_lives,1
 				call BORRA_LIVES
 				call IMPRIME_LIVES
 				ret
