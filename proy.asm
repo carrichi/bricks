@@ -127,6 +127,7 @@ player_ren		db 		ini_renglon
 col_aux 		db 		0
 ren_aux 		db 		0
 
+t_inicial		dw 		0,0		;guarda números de ticks inicial
 conta 			db 		0
 tick_ms			dw 		55 		;55 ms por cada tick del sistema, esta variable se usa para operación de MUL convertir ticks a segundos
 mil				dw		1000 	;1000 auxiliar para operación DIV entre 1000
@@ -134,6 +135,8 @@ diez 			dw 		10 		;10 auxiliar para operaciones
 sesenta			db 		60 		;60 auxiliar para operaciones
 status 			db 		0 		;0 stop, 1 play, 2 pause
 ticks 			dw		0 		;Variable para almacenar el número de ticks del sistema y usarlo como referencia
+milisegundos	dw		0		;variable para guardar la cantidad de milisegundos
+comparamili		dw		100	;Variable para comparar milisegundos pasados
 
 brick_color 	db 		0
 mapa_bricks 	db 		3,2,1,3,2,1,'#',2,1,3,2,1,3,'#',1,3,2,1,3,2,'#',3,2,1,3,2,1,'#',2,1,3,2,1,3,'%' 
@@ -300,7 +303,7 @@ endm
 ;AL = ASCII character
 
 lee_teclado	macro	;para entradas del teclado 
-	mov ah,10h 	
+	mov ah,11h 	
 	int 16h		;interrupcion 16h (maneja la entrada del teclado)
 endm
 
@@ -308,6 +311,14 @@ endm
 clear_buffer macro
 	mov ah, 0Ch
 	int 21h
+endm
+
+cuenta_tiempo macro 
+	;Lee el valor del contador de ticks y lo guarda en variable t_inicial
+	mov ah,00h
+	int 1Ah
+	mov [t_inicial],dx
+	mov [t_inicial+2],cx
 endm
 
 ;comprueba_mouse - Revisa si el driver del mouse existe
@@ -495,6 +506,12 @@ can_play:
 play:
 	jmp listen_teclado
 continue:
+	call compara_tiempo
+	mov bx, milisegundos
+	cmp bx, comparamili
+	jb listen_teclado
+
+	cuenta_tiempo
 	call BALL_CAN_MOVE
 	cmp [bola_status], 1
 	je move_ball_accepted
@@ -520,7 +537,7 @@ continteclado:
 	je boton_stop2
 	cmp al, 0Dh		;compara la entrada de teclado si fue [enter]
 	je boton_play2
-	jmp listen_teclado
+	jmp continue
 
 ; En el caso que se presione la flecha izquierda, el jugador se mueve a la izquierda.
 mover_derecha:
@@ -528,6 +545,7 @@ mover_derecha:
 	get_player_position
 	cmp [col_aux],27
 	jbe mover_derecha_aceptado
+	clear_buffer
 	jmp continue
 
 mover_derecha_aceptado:
@@ -535,6 +553,7 @@ mover_derecha_aceptado:
 	call BORRA_JUGADOR
 	inc [player_col]	
 	call IMPRIME_JUGADOR
+	clear_buffer
 	jmp continue
 
 ; En el caso que se presione la flecha izquierda, el jugador se mueve a la izquierda.
@@ -543,12 +562,14 @@ mover_izquierda:
 	get_player_position
 	cmp [col_aux], 4
 	jge mover_izquierda_aceptado
+	clear_buffer
 	jmp continue
 
 mover_izquierda_aceptado:
 	call BORRA_JUGADOR
 	dec [player_col]
 	call IMPRIME_JUGADOR
+	clear_buffer
 	jmp continue
 
 ;;;;;;;;;;;;;;;
@@ -1288,6 +1309,46 @@ salir:				;inicia etiqueta salir
 		no_color:
 			ret
 	endp
+
+	compara_tiempo proc 
+		;Se vuelve a leer el contador de ticks
+		;Se lee para saber cuántos ticks pasaron entre la lectura inicial y ésta
+		;De esa forma, se obtiene la diferencia de ticks
+		;por cada incremento en el contador de ticks, transcurrieron 55 ms
+		mov ah,00h
+		int 1Ah
+
+		;Se recupera el valor de los ticks iniciales para poder hacer la diferencia entre
+		;el valor inicial y el último recuperado
+		mov ax,[t_inicial]		;AX = parte baja de t_inicial
+		mov bx,[t_inicial+2]	;BX = parte alta de t_inicial
+		
+		;Se hace la resta de los valores para obtener la diferencia
+		sub dx,ax  				;DX = DX - AX = t_final - t_inicial, DX guarda la parte baja del contador de ticks
+		sbb cx,bx 				;CX = CX - BX - C = t_final - t_inicial - C, CX guarda la parte alta del contador de ticks y se resta el acarreo si hubo en la resta anterior
+
+		;Se asume que el valor de CX es cronómetro
+		;Significaría que la diferencia de ticks no es mayor a 65535d
+		;Si la diferencia está entre 0d y 65535d, significa que hay un máximo de 65535 * 55ms =  3,604,425 milisegundos
+		mov ax,dx
+
+		;Se multiplica la diferencia de ticks por 55ms para obtener 
+		;la diferencia en milisegundos
+		mul [tick_ms]
+
+		;El valor anterior se divide entre 1000 para calcular la cantidad de segundos 
+		;y la cantidad de milisegundos del cronómetro (0d - 999d)
+		div [mil]
+		;Después de esta división, el cociente AX guarda el valor de segundos
+		;el residuo DX tiene la cantidad de milisegundos del cronómetro (0- 999d)
+		
+		;Se guardan los milisegundos en una variable
+		;Nota: este valor se guarda en hexadecimal
+		mov [milisegundos],dx
+		ret
+	endp
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;FIN PROCEDIMIENTOS;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
